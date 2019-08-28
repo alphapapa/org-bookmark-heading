@@ -94,41 +94,43 @@ It should take one argument, the path to the file."
 (defun org-bookmark-make-record ()
   "Return alist for `bookmark-set' for current `org-mode'
 heading.  Set org-id for heading if necessary."
-  (let* ((filename (buffer-file-name (org-base-buffer (current-buffer))))
-         (display-filename (funcall org-bookmark-heading-filename-fn filename))
-	 (heading (unless (org-before-first-heading-p)
-                    (org-link-display-format (org-get-heading t t))))
-	 (name (concat display-filename (when heading
-                                          (concat ":" heading))))
-	 front-context-string handler)
-    (unless (and (boundp 'bookmark-name)
-		 (or (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture-marker))
-		     (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture))
-		     (string= bookmark-name (plist-get org-bookmark-names-plist :last-refile))))
-      ;; When `org-capture-mode' is active, and/or when a heading is
-      ;; being refiled, do not create an org-id for the current
-      ;; heading, and do not set the bookmark handler.  This is
-      ;; because org-capture sets a bookmark for the last capture when
-      ;; `org-capture-bookmark' is non-nil, and `org-refile' sets a
-      ;; bookmark when a heading is refiled, and we don't want every
-      ;; heading captured or refiled to get an org-id set by this
-      ;; function, because not everyone wants to have property drawers
-      ;; "polluting" every heading in their org files. `bookmark-name'
-      ;; is set in `org-capture-bookmark-last-stored-position' and in
-      ;; `org-refile', and it seems to be the way to detect whether
-      ;; this is being called from a capture or a refile.
+  (if (org-before-first-heading-p)
+      (bookmark-make-record-default)
+    (let* ((filename (buffer-file-name (org-base-buffer (current-buffer))))
+	   (display-filename (funcall org-bookmark-heading-filename-fn filename))
+	   (heading (unless (org-before-first-heading-p)
+		      (org-link-display-format (org-get-heading t t))))
+	   (name (concat display-filename (when heading
+					    (concat ":" heading))))
+	   front-context-string handler)
+      (unless (and (boundp 'bookmark-name)
+		   (or (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture-marker))
+		       (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture))
+		       (string= bookmark-name (plist-get org-bookmark-names-plist :last-refile))))
+	;; When `org-capture-mode' is active, and/or when a heading is
+	;; being refiled, do not create an org-id for the current
+	;; heading, and do not set the bookmark handler.  This is
+	;; because org-capture sets a bookmark for the last capture when
+	;; `org-capture-bookmark' is non-nil, and `org-refile' sets a
+	;; bookmark when a heading is refiled, and we don't want every
+	;; heading captured or refiled to get an org-id set by this
+	;; function, because not everyone wants to have property drawers
+	;; "polluting" every heading in their org files. `bookmark-name'
+	;; is set in `org-capture-bookmark-last-stored-position' and in
+	;; `org-refile', and it seems to be the way to detect whether
+	;; this is being called from a capture or a refile.
 
-      ;; MAYBE: An option to always use org-ids.  Some people might
-      ;; prefer to have all headings given org-ids, because that way
-      ;; the bookmarks will be more accurate.  The file/line-number
-      ;; bookmarks aren't guaranteed to be accurate with org files.
-      (when heading
-        (setq front-context-string (org-id-get (point) t)))
-      (setq handler 'org-bookmark-jump))
-    (rassq-delete-all nil `(,name
-			    (filename . ,filename)
-			    (handler . ,handler)
-			    (front-context-string . ,front-context-string)))))
+	;; MAYBE: An option to always use org-ids.  Some people might
+	;; prefer to have all headings given org-ids, because that way
+	;; the bookmarks will be more accurate.  The file/line-number
+	;; bookmarks aren't guaranteed to be accurate with org files.
+	(when heading
+	  (setq front-context-string (org-id-get (point) t)))
+	(setq handler 'org-bookmark-jump))
+      (rassq-delete-all nil `(,name
+			      (filename . ,filename)
+			      (handler . ,handler)
+			      (front-context-string . ,front-context-string))))))
 
 (defun org-bookmark-heading--display-path (path)
   "Return display string for PATH.

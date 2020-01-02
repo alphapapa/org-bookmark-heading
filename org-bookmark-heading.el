@@ -84,6 +84,11 @@
 It should take one argument, the path to the file."
   :type 'function)
 
+(defcustom org-bookmark-heading-name-fn #'org-bookmark-heading-default-name-fn
+  "Function that returns a string to represent the current heading.
+It should take two arguments, the path to the file and the heading."
+  :type 'function)
+
 ;;;; Variables
 
 (setq-mode-local org-mode bookmark-make-record-function 'org-bookmark-make-record)
@@ -95,12 +100,10 @@ It should take one argument, the path to the file."
   "Return alist for `bookmark-set' for current `org-mode'
 heading.  Set org-id for heading if necessary."
   (let* ((filename (buffer-file-name (org-base-buffer (current-buffer))))
-         (display-filename (funcall org-bookmark-heading-filename-fn filename))
-         (heading (unless (org-before-first-heading-p)
+	 (heading (unless (org-before-first-heading-p)
                     (org-link-display-format (org-get-heading t t))))
-         (name (concat display-filename (when heading
-                                          (concat ":" heading))))
-         front-context-string handler)
+         (name (funcall org-bookmark-heading-name-fn filename heading))
+	 front-context-string handler)
     (unless (and (boundp 'bookmark-name)
                  (or (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture-marker))
                      (string= bookmark-name (plist-get org-bookmark-names-plist :last-capture))
@@ -129,6 +132,13 @@ heading.  Set org-id for heading if necessary."
                             (filename . ,filename)
                             (handler . ,handler)
                             (front-context-string . ,front-context-string)))))
+
+(defun org-bookmark-heading-default-name-fn (filename heading)
+  "Return bookmark name for FILENAME and HEADING.
+Intended as the default value for `org-bookmark-heading-name-fn'."
+  (concat (funcall org-bookmark-heading-filename-fn filename)
+          (when heading
+            (concat ":" heading))))
 
 (defun org-bookmark-heading--display-path (path)
   "Return display string for PATH.

@@ -112,8 +112,9 @@ heading.  Set org-id for heading if necessary."
          (display-filename (funcall org-bookmark-heading-filename-fn filename))
          (heading (unless (org-before-first-heading-p)
                     (org-link-display-format (org-get-heading t t))))
-         (name (concat display-filename (when heading
-                                          (concat ":" heading))))
+         (name (concat display-filename (if heading
+                                            (concat ":" heading)
+                                          "")))
          (outline-path (org-get-outline-path 'with-self))
          (indirectp (when (buffer-base-buffer) t))
          id handler)

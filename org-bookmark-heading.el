@@ -62,6 +62,7 @@
 (require 'mode-local)
 (require 'org)
 (require 'bookmark)
+(require 'map)
 
 ;;;; Customization
 

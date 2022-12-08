@@ -256,6 +256,31 @@ better way to do this, but Helm can be confusing, and this works."
                '("Jump to org-mode bookmark in indirect buffer" . helm-org-bookmark-jump-indirect-action)
                t))
 
+;;;; Bookmark+ support
+
+(with-eval-after-load 'bookmark+
+
+  ;; Replicating similar features for other bookmark types in Bookmark+.
+  ;; Matching code appears in bookmark+-1.el, bookmark+-bmu.el,
+  ;; bookmark+-key.el
+
+  (defun bmkp-org-bookmark-p (bookmark)
+    "Return non-nil if BOOKMARK bookmarks an Org heading."
+    (eq (bookmark-get-handler bookmark) 'org-bookmark-heading-jump))
+
+  (defun bmkp-org-alist-only ()
+    "`bookmark-alist', but only for Org heading bookmarks.
+A new list is returned (no side effects)."
+    (bookmark-maybe-load-default-file)
+    (bmkp-remove-if-not #'bmkp-org-bookmark-p bookmark-alist))
+
+  (bmkp-define-show-only-command org "Display (only) the Org bookmarks." bmkp-org-alist-only)
+
+  (defun bmkp-bmenu-mark-org-bookmarks (&optional msgp)
+    "Mark Org bookmarks."
+    (interactive "p")
+    (bmkp-bmenu-mark-bookmarks-satisfying 'bmkp-org-bookmark-p nil msgp)))
+
 ;;;; Footer
 
 (provide 'org-bookmark-heading)

@@ -115,6 +115,7 @@ Sets ID property for heading if necessary."
          (name (concat display-filename (when heading
                                           (concat ":" heading))))
          (outline-path (org-get-outline-path 'with-self))
+         (position (when (eq (point) (point-max)) "eob"))
          (indirectp (when (buffer-base-buffer) t))
          id handler)
     (unless (and (boundp 'bookmark-name)
@@ -145,6 +146,7 @@ Sets ID property for heading if necessary."
                             ;; (front-context-string . ,front-context-string)
                             (id . ,id)
                             (outline-path . ,outline-path)
+                            (position . ,position)
                             (indirectp . ,indirectp)))))
 
 (define-obsolete-function-alias
@@ -172,16 +174,21 @@ supported, in which case it should be an entry ID)."
                          (when-let ((olp outline-path)
                                     (marker (org-find-olp outline-path 'this-buffer)))
                            (org-goto-marker-or-bmk marker)
-                           (current-buffer))))
-    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string indirectp)) bookmark)
+                           (current-buffer)))
+            (jump-to-position (filename position)
+                              (when (string= position "eob")
+                                (find-file filename)
+                                (end-of-buffer)
+                                (current-buffer))))
+    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string position indirectp)) bookmark)
                  (id (or id
                          ;; For old bookmark records made before we
                          ;; saved the `id' key.
                          front-context-string))
                  (original-buffer (current-buffer))
                  (new-buffer))
-      (when (or (and (or id outline-path)
-                     ;; Bookmark has ID and/or outline path.
+      (when (or (and (or id outline-path position)
+                     ;; Bookmark has ID and/or outline path and/or position.
                      (or (jump-to-id id)
                          ;; ID not found: Open the file and look again.
                          (when-let ((buffer (when filename
@@ -193,8 +200,10 @@ supported, in which case it should be an entry ID)."
                            (progn
                              (setf new-buffer buffer)
                              (set-buffer buffer)
-                             (or (jump-to-id id)
-                                 ;; Still couldn't find ID: Try outline path.
+                             (or (jump-to-position filename position)
+                                 ;; no EOB position specified. Try ID.
+                                 (jump-to-id id)
+                                 ;; Couldn't find ID. Try outline path.
                                  (jump-to-olp outline-path)
                                  (progn
                                    ;; ID not found: Cleanup buffer.
@@ -205,7 +214,7 @@ supported, in which case it should be an entry ID)."
                      (find-file filename)))
         ;; Found heading or file.
         (when (and (or indirectp org-bookmark-heading-jump-indirect)
-                   (or id outline-path))
+                   (or id outline-path position))
           ;; Found heading (not just file): open in indirect buffer.
           (let ((org-indirect-buffer-display 'current-window))
             ;; We bind `org-indirect-buffer-display' to this because
@@ -217,7 +226,7 @@ supported, in which case it should be an entry ID)."
             ;; so it won't be selected when the indirect buffer is killed.
             (set-window-prev-buffers nil (append (cdr (window-prev-buffers))
                                                  (list (car (window-prev-buffers)))))))
-        (unless (equal (buffer-file-name (buffer-base-buffer)) filename)
+        (unless (equal (buffer-file-name (buffer-base-buffer)) (expand-file-name filename))
           ;; TODO: Automatically update the bookmark?
           ;; Warn that the node has moved to another file
           (message "Heading has moved to another file.  Consider updating bookmark: %S" bookmark))))))

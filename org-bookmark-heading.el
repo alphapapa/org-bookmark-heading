@@ -98,6 +98,10 @@ created for entries that don't already have one."
                  (const :tag "Use existing IDs, but don't make new ones" nil)
                  (function :tag "Custom predicate" :doc "Called with point at the heading, it should return non-nil if an ID should be created.  This may be useful to, e.g. only make IDs for entries within one's `org-directory'.")))
 
+(defcustom org-bookmark-heading-match-eob nil
+  "Recognize end-of-buffer as a special target position in org buffers."
+  :type 'boolean)
+
 ;;;; Variables
 
 (setq-mode-local org-mode bookmark-make-record-function 'org-bookmark-heading-make-record)
@@ -115,7 +119,7 @@ Sets ID property for heading if necessary."
          (name (concat display-filename (when heading
                                           (concat ":" heading))))
          (outline-path (org-get-outline-path 'with-self))
-         (position (when (eq (point) (point-max)) "eob"))
+         (posmarker (when (and org-bookmark-heading-match-eob (eq (point) (point-max))) "eob"))
          (indirectp (when (buffer-base-buffer) t))
          id handler)
     (unless (and (boundp 'bookmark-name)
@@ -146,7 +150,7 @@ Sets ID property for heading if necessary."
                             ;; (front-context-string . ,front-context-string)
                             (id . ,id)
                             (outline-path . ,outline-path)
-                            (position . ,position)
+                            (posmarker . ,posmarker)
                             (indirectp . ,indirectp)))))
 
 (define-obsolete-function-alias
@@ -175,21 +179,21 @@ supported, in which case it should be an entry ID)."
                                     (marker (org-find-olp outline-path 'this-buffer)))
                            (org-goto-marker-or-bmk marker)
                            (current-buffer)))
-            (jump-to-position (filename position)
-                              (when (string= position "eob")
+            (jump-to-position (filename posmarker)
+                              (when (and posmarker (string= posmarker "eob"))
                                 (find-file filename)
                                 (end-of-buffer)
                                 (current-buffer))))
-    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string position indirectp)) bookmark)
+    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string posmarker indirectp)) bookmark)
                  (id (or id
                          ;; For old bookmark records made before we
                          ;; saved the `id' key.
                          front-context-string))
                  (original-buffer (current-buffer))
                  (new-buffer))
-      (when (or (and (or id outline-path position)
+      (when (or (and (or id outline-path posmarker)
                      ;; Bookmark has ID and/or outline path and/or position.
-                     (or (jump-to-id id)
+                     (or (when (null posmarker) (jump-to-id id))
                          ;; ID not found: Open the file and look again.
                          (when-let ((buffer (when filename
                                               (or (org-find-base-buffer-visiting filename)
@@ -200,7 +204,7 @@ supported, in which case it should be an entry ID)."
                            (progn
                              (setf new-buffer buffer)
                              (set-buffer buffer)
-                             (or (jump-to-position filename position)
+                             (or (jump-to-position filename posmarker)
                                  ;; no EOB position specified. Try ID.
                                  (jump-to-id id)
                                  ;; Couldn't find ID. Try outline path.
@@ -214,7 +218,7 @@ supported, in which case it should be an entry ID)."
                      (find-file filename)))
         ;; Found heading or file.
         (when (and (or indirectp org-bookmark-heading-jump-indirect)
-                   (or id outline-path position))
+                   (or id outline-path posmarker))
           ;; Found heading (not just file): open in indirect buffer.
           (let ((org-indirect-buffer-display 'current-window))
             ;; We bind `org-indirect-buffer-display' to this because

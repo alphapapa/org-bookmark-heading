@@ -128,6 +128,8 @@ Sets ID property for heading if necessary."
                                           (concat ":" heading))))
          (outline-path (when heading
                          (org-get-outline-path 'with-self)))
+         (posmarker (when (and (eq (point) (point-max))
+                               (y-or-n-p "Bookmark end-of-buffer? ")) "eob"))
          (indirectp (when (buffer-base-buffer) t))
          id handler)
     (unless (and (boundp 'bookmark-name)
@@ -158,6 +160,7 @@ Sets ID property for heading if necessary."
                             ;; (front-context-string . ,front-context-string)
                             (id . ,id)
                             (outline-path . ,outline-path)
+                            (posmarker . ,posmarker)
                             (indirectp . ,indirectp)))))
 
 (define-obsolete-function-alias
@@ -177,25 +180,31 @@ BOOKMARK record should have fields `map', `outline-path', and
 `id', (and, for compatibility, `front-context-string' is also
 supported, in which case it should be an entry ID)."
   (cl-flet ((jump-to-id
-             (id) (when-let ((id id)
-                             (marker (org-id-find id 'markerp)))
-                    (org-goto-marker-or-bmk marker)
-                    (current-buffer)))
+              (id) (when-let ((id id)
+                              (marker (org-id-find id 'markerp)))
+                     (org-goto-marker-or-bmk marker)
+                     (current-buffer)))
             (jump-to-olp (outline-path)
-                         (when-let ((olp outline-path)
-                                    (marker (org-find-olp outline-path 'this-buffer)))
-                           (org-goto-marker-or-bmk marker)
-                           (current-buffer))))
-    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string indirectp)) bookmark)
+              (when-let ((olp outline-path)
+                         (marker (org-find-olp outline-path 'this-buffer)))
+                (org-goto-marker-or-bmk marker)
+                (current-buffer)))
+            (jump-to-position (filename posmarker)
+              (message "posmarker is %s" posmarker)
+              (when (and posmarker (string= posmarker "eob"))
+                (find-file filename)
+                (end-of-buffer)
+                (current-buffer))))
+    (pcase-let* ((`(,_name . ,(map filename outline-path id front-context-string posmarker indirectp)) bookmark)
                  (id (or id
                          ;; For old bookmark records made before we
                          ;; saved the `id' key.
                          front-context-string))
                  (original-buffer (current-buffer))
                  (new-buffer))
-      (when (or (and (or id outline-path)
-                     ;; Bookmark has ID and/or outline path.
-                     (or (jump-to-id id)
+      (when (or (and (or id outline-path posmarker)
+                     ;; Bookmark has ID and/or outline path and/or position.
+                     (or (when (null posmarker) (jump-to-id id))
                          ;; ID not found: Open the file and look again.
                          (when-let ((buffer (when filename
                                               (or (org-find-base-buffer-visiting filename)
@@ -206,8 +215,11 @@ supported, in which case it should be an entry ID)."
                            (progn
                              (setf new-buffer buffer)
                              (set-buffer buffer)
-                             (or (jump-to-id id)
-                                 ;; Still couldn't find ID: Try outline path.
+                             (or (jump-to-position filename posmarker)
+                                 ;; no EOB position specified. Try ID.
+                                 (jump-to-id id)
+                                 ;; Couldn't find ID. Try outline path.
+
                                  (jump-to-olp outline-path)
                                  (progn
                                    ;; ID not found: Cleanup buffer.

@@ -3,7 +3,7 @@
 ;; Author: Adam Porter <adam@alphapapa.net>
 ;; Version: 1.4-pre
 ;; Url: http://github.com/alphapapa/org-bookmark-heading
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: hypermedia, outlines
 
 ;;; Commentary:

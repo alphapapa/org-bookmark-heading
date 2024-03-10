@@ -132,12 +132,12 @@ Sets ID property for heading if necessary."
          (outline-path (when heading
                          (org-get-outline-path 'with-self)))
          (indirectp (when (buffer-base-buffer) t))
-         id handler)
 
+         (handler #'org-bookmark-heading-jump)
+         id)
     (unless (or org-bookmark-heading--refile-in-progress org-bookmark-heading--store-in-progress)
       ;; When `org-capture-mode' is active, and/or when a heading is
-      ;; being refiled, do not create an org-id for the current
-      ;; heading, and do not set the bookmark handler.  This is
+      ;; being refiled, do not create an org-id for the current heading. This is
       ;; because org-capture sets a bookmark for the last capture when
       ;; `org-capture-bookmark' is non-nil, and `org-refile' sets a
       ;; bookmark when a heading is refiled, and we don't want every
@@ -147,8 +147,7 @@ Sets ID property for heading if necessary."
       (setf id (org-id-get (point) (pcase-exhaustive org-bookmark-heading-make-ids
                                      (`t t)
                                      (`nil nil)
-                                     ((pred functionp) (funcall org-bookmark-heading-make-ids))))
-            handler #'org-bookmark-heading-jump))
+                                     ((pred functionp) (funcall org-bookmark-heading-make-ids))))))
     (rassq-delete-all nil `(,name
                             (filename . ,filename)
                             (handler . ,handler)
